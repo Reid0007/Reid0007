@@ -8,20 +8,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble staged base64 into PNGs
+      - name: Download LinkedIn PNGs from Netlify mirror
         run: |
           set -euo pipefail
           mkdir -p assets/linkedin
-          shopt -s nullglob
-          for staging in assets/linkedin/_staging/*.b64.part000; do
-            base=$(basename "$staging" .b64.part000)
-            echo "Assembling $base"
-            cat assets/linkedin/_staging/${base}.b64.part* | base64 -d > "assets/linkedin/${base}"
-            head -c 8 "assets/linkedin/${base}" | od -An -tx1 | grep -q "89 50 4e 47"
-            wc -c "assets/linkedin/${base}"
+          BASE="https://bldblty-li-assets-oct2026.netlify.app/assets/linkedin"
+          for f in \
+            linkedin-og-v3.png \
+            oct7-flood-ae-v1.png \
+            oct8-zone-envelope-v1.png \
+            oct9-adu-can-i-build-v1.png \
+            oct12-cities-undeveloped-test-v1.png \
+            oct13-rei-utilities-zero-v1.png \
+            oct14-land-no-zoning-v1.png \
+            oct15-devs-nine-factors-v1.png \
+            oct16-adu-three-questions-v1.png \
+            oct19-cities-cdbg-eligible-v1.png; do
+            echo "Fetching $f"
+            curl -fsSL "$BASE/$f" -o "assets/linkedin/$f"
+            head -c 8 "assets/linkedin/$f" | od -An -tx1 | grep -q "89 50 4e 47"
+            wc -c "assets/linkedin/$f"
           done
-          rm -rf assets/linkedin/_staging
-          rm -f assets/linkedin/_fileref_test.txt assets/linkedin/_localpath_probe.png assets/linkedin/_probe2.png assets/linkedin/_push_probe.png assets/linkedin/_upload_probe.png assets/linkedin/_encoding_test.txt assets/linkedin/_encoding_b64_param.txt assets/linkedin/test-pixel.png || true
+          rm -rf assets/linkedin/_staging || true
+          rm -f assets/linkedin/_fileref_test.txt \
+                assets/linkedin/_localpath_probe.png \
+                assets/linkedin/_probe2.png \
+                assets/linkedin/_push_probe.png \
+                assets/linkedin/_upload_probe.png \
+                assets/linkedin/_encoding_test.txt \
+                assets/linkedin/_encoding_b64_param.txt \
+                assets/linkedin/_size_probe.b64.part000 \
+                assets/linkedin/test-pixel.png || true
       - name: Commit and push
         run: |
           set -euo pipefail
@@ -29,5 +46,5 @@ jobs:
           git config user.email "landon@mod.homes"
           git add -A assets/linkedin
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "Add Buildability LinkedIn PNGs (binary, assembled from staging)"
+          git commit -m "Add Buildability LinkedIn PNGs (binary)"
           git push
