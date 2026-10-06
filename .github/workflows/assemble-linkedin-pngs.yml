@@ -1,0 +1,33 @@
+name: assemble-linkedin-pngs
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble staged base64 into PNGs
+        run: |
+          set -euo pipefail
+          mkdir -p assets/linkedin
+          shopt -s nullglob
+          for staging in assets/linkedin/_staging/*.b64.part000; do
+            base=$(basename "$staging" .b64.part000)
+            echo "Assembling $base"
+            cat assets/linkedin/_staging/${base}.b64.part* | base64 -d > "assets/linkedin/${base}"
+            head -c 8 "assets/linkedin/${base}" | od -An -tx1 | grep -q "89 50 4e 47"
+            wc -c "assets/linkedin/${base}"
+          done
+          rm -rf assets/linkedin/_staging
+          rm -f assets/linkedin/_fileref_test.txt assets/linkedin/_localpath_probe.png assets/linkedin/_probe2.png assets/linkedin/_push_probe.png assets/linkedin/_upload_probe.png assets/linkedin/_encoding_test.txt assets/linkedin/_encoding_b64_param.txt assets/linkedin/test-pixel.png || true
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "Lando"
+          git config user.email "landon@mod.homes"
+          git add -A assets/linkedin
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Add Buildability LinkedIn PNGs (binary, assembled from staging)"
+          git push
